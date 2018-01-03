@@ -7,8 +7,8 @@ Author: Oxford University Press
 """
 
 import os
-
-from odapi_client import Client
+from pprint import pprint
+from odapi_client import *
 
 
 class Examples:
@@ -77,18 +77,36 @@ class Examples:
         final_score = basic_score * multiplier
         return final_score, multiplier, normalized_freq, frequency
 
-    def more_frequent(self, word1='you and myself', word2='you and I'):
+    def more_frequent(self, word1='doctors and nurses', word2='nurses and doctors'):
         if self.client.frequency(word1) < self.client.frequency(word2):
-            return word2
-        return word1
+            return '"{}" if more frequent than "{}"'.format(word2, word1)
+        return '"{}" if more frequent than "{}"'.format(word1, word2)
 
     def frequency(self, word, lexical_category=None):
         return self.client.frequency(word, lexical_category=lexical_category)
 
+    def multiquery(self):
+        res = examples.client.frequencies('this', 'is', 'a', 'test', 'azzdsfasuf')
+        pprint(res)
+
+    def pmi(self):
+        print('puerto', 'rico', examples.client.pmi('puerto', 'rico'))
+        print('a', 'and', examples.client.pmi('a', 'and'))
+        print('horse', 'boot', examples.client.pmi('horse', 'boot'))
+        print('horse', 'shoe', examples.client.pmi('horse', 'shoe'))
+        print('monty', 'python', examples.client.pmi('monty', 'python'))
+        print('flying', 'circus', examples.client.pmi('flying', 'circus'))
+
 
 if __name__ == '__main__':
-    examples = Examples()
-    examples.simple()
-    examples.simple_with_lexical_categories()
-    examples.word_scores()
-    examples.more_frequent()
+    try:
+        examples = Examples()
+        # examples.simple()
+        # examples.simple_with_lexical_categories()
+        # examples.word_scores()
+        # examples.more_frequent()
+        examples.multiquery()
+        # examples.pmi()
+        pprint(examples.client.frequencies('one', 'and two', 'and three and', 'this is a test', 'and another test'))
+    except RequestError as e:
+        print(e.response.status_code, e.response.text)
