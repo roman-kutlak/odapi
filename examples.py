@@ -122,12 +122,12 @@ if __name__ == '__main__':
     start = datetime.datetime.now()
     try:
         examples = Examples()
-        # examples.simple()
-        # examples.simple_with_lexical_categories()
-        # examples.word_scores()
-        # examples.more_frequent()
-        # examples.multiquery()
-        # examples.pmi()
+        examples.simple()
+        examples.simple_with_lexical_categories()
+        examples.word_scores()
+        examples.more_frequent()
+        examples.multiquery()
+        examples.pmi()
         examples.ngrams()
         print('Total # queries:', examples.client.num_queries)
     except RequestError as e:
