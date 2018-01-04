@@ -129,6 +129,14 @@ class Client(object):
         return results[0]['frequency'] if results else 0
 
     def request(self, path, params, **kwargs):
+        """Retrieve (possibly recursively) results"""
+        # OD API limit is 100 entries per result
+        length = params.pop('length', 100)
+        # /ngrams/ and /words/ support 'limit';
+        if '/word/' in path:
+            params.pop('limit', 0)
+        else:
+            params['limit'] = min(length, params.get('limit', 100))
         self.num_queries += 1
         log.debug('Requesting "{}" {}, {}'.format(path, repr(params), repr(kwargs)))
         elapsed = (time.time() - self.last_query)
@@ -139,14 +147,16 @@ class Client(object):
         self.last_query = time.time()
         r = requests.get(self.endpoint + path, params=params, headers=self.headers, **kwargs)
         if r.status_code != 200:
-            raise RequestError('OD API Error', r)
+            lines = [s.strip() for s in r.text.split('\n') if s.strip()]
+            raise RequestError('OD API Error ({}): {}'.format(r.status_code, r.text if not lines else lines[-1]), r)
         rv = r.json()
         if 'results' in rv:
             # lists are limited to 100 elements so query for the rest if necessary
             limit = rv['metadata']['options']['limit']
             offset = rv['metadata']['options']['offset']
-            if rv['metadata']['total'] > limit + offset:
+            if rv['metadata']['total'] > limit + offset and (length < 0 or limit < length):
                 params['offset'] = offset + limit
+                params['length'] = length - limit
                 rv['results'].extend(self.request(path, params)['results'])
         return rv
 
@@ -179,7 +189,7 @@ class Client(object):
 
         """
         n = self.corpus_size
-        c_w1_w2, c_w1, c_w2 = tuple(self.frequencies(w1 + ' ' + w2, w1, w2).values())
+        c_w1_w2, c_w1, c_w2 = self.frequencies(w1 + ' ' + w2, w1, w2).values()
         if not (c_w1_w2 and c_w1 and c_w2):
             return 0.0
         pmi = log2(c_w1_w2) + log2(n) - log2(c_w1) - log2(c_w2)

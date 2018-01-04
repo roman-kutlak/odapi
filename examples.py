@@ -81,9 +81,12 @@ class Examples:
         return final_score, multiplier, normalized_freq, frequency
 
     def more_frequent(self, word1='doctors and nurses', word2='nurses and doctors'):
-        if self.client.frequency(word1) < self.client.frequency(word2):
-            return '"{}" if more frequent than "{}"'.format(word2, word1)
-        return '"{}" if more frequent than "{}"'.format(word1, word2)
+        f1, f2 = self.client.frequencies(word1, word2).values()
+        if f1 < f2:
+            result = '"{word2}" ({f2}) is more frequent than "{word1}" ({f1})'
+        else:
+            result = '"{word1}" ({f1}) is more frequent than "{word2}" ({f2})'
+        print(result.format(word1=word1, word2=word2, f1=f1, f2=f2))
 
     def frequency(self, word, lexical_category=None):
         return self.client.frequency(word, lexical_category=lexical_category)
@@ -92,12 +95,16 @@ class Examples:
         # keep track for the total
         initial = self.client.num_queries
         self.client.num_queries = 0
-        res = self.client.frequencies('this', 'is', 'a', 'test', 'azzdsfasuf')
+        res = self.client.frequencies('this', 'is', 'a', 'test', 'I-am-not-a-word')
         pprint(res)
         print('# queries:', self.client.num_queries)
         initial += self.client.num_queries
         self.client.num_queries = 0
-        res = self.client.frequencies('one', 'and two', 'and three and', 'this is a test', 'and another test')
+        res = self.client.frequencies(
+            'one', 'and two', 'and three and',
+            'this is a test', 'and another test',
+            'this is the test', 'and yet another test',
+        )
         pprint(res)
         print('# queries:', self.client.num_queries)
         self.client.num_queries += initial
@@ -118,7 +125,7 @@ class Examples:
 
 if __name__ == '__main__':
     logging.basicConfig(level=logging.INFO)
-    logging.getLogger('odapi_client').setLevel(logging.DEBUG)
+    logging.getLogger('odapi_client').setLevel(logging.INFO)
     start = datetime.datetime.now()
     try:
         examples = Examples()
@@ -126,6 +133,7 @@ if __name__ == '__main__':
         examples.simple_with_lexical_categories()
         examples.word_scores()
         examples.more_frequent()
+        examples.more_frequent('gentlemen and ladies', 'ladies and gentlemen')
         examples.multiquery()
         examples.pmi()
         examples.ngrams()
