@@ -6,6 +6,8 @@ Author: Oxford University Press
 
 """
 
+import datetime
+import logging
 import os
 from pprint import pprint
 from odapi_client import *
@@ -13,6 +15,7 @@ from odapi_client import *
 
 class Examples:
 
+    # client = Client(app_id=os.environ['app_id'], app_key=os.environ['app_key'], endpoint='http://localhost:38000/api/v1')
     client = Client(app_id=os.environ['app_id'], app_key=os.environ['app_key'])
 
     def __init__(self, app_id=None, app_key=None, headers=None):
@@ -29,15 +32,15 @@ class Examples:
         words = [
             ('test', 'noun'),
             ('test', 'verb'),
-            ('testing', 'noun'),
-            ('testing', 'verb')
+            ('fishing', 'noun'),
+            ('fishing', 'verb')
         ]
         for w, lc in words:
             print(w, lc, self.client.frequency(w, lexical_category=lc))
 
     def wordforms(self, lemma='test', lexical_category=None):
         """Print wordforms of a lemma found in the corpus"""
-        results = self.client.words_stats(lemma=lemma, lexical_category=lexical_category)
+        results = self.client.word_stats_list(lemma=lemma, lexical_category=lexical_category)
         lex_cat = '' if not lexical_category else ' with lexical category "{}"'.format(lexical_category)
         print('Wordforms of lemma "{}"{}'.format(lemma, lex_cat))
         for r in list(sorted(set(r['trueCase'] for r in results))):
@@ -86,27 +89,48 @@ class Examples:
         return self.client.frequency(word, lexical_category=lexical_category)
 
     def multiquery(self):
-        res = examples.client.frequencies('this', 'is', 'a', 'test', 'azzdsfasuf')
+        # keep track for the total
+        initial = self.client.num_queries
+        self.client.num_queries = 0
+        res = self.client.frequencies('this', 'is', 'a', 'test', 'azzdsfasuf')
         pprint(res)
+        print('# queries:', self.client.num_queries)
+        initial += self.client.num_queries
+        self.client.num_queries = 0
+        res = self.client.frequencies('one', 'and two', 'and three and', 'this is a test', 'and another test')
+        pprint(res)
+        print('# queries:', self.client.num_queries)
+        self.client.num_queries += initial
 
     def pmi(self):
-        print('puerto', 'rico', examples.client.pmi('puerto', 'rico'))
-        print('a', 'and', examples.client.pmi('a', 'and'))
-        print('horse', 'boot', examples.client.pmi('horse', 'boot'))
-        print('horse', 'shoe', examples.client.pmi('horse', 'shoe'))
-        print('monty', 'python', examples.client.pmi('monty', 'python'))
-        print('flying', 'circus', examples.client.pmi('flying', 'circus'))
+        """Print PMI """
+        print('puerto', 'rico', self.client.pmi('puerto', 'rico'))
+        print('a', 'and', self.client.pmi('a', 'and'))
+        print('horse', 'boot', self.client.pmi('horse', 'boot'))
+        print('horse', 'shoe', self.client.pmi('horse', 'shoe'))
+        print('monty', 'python', self.client.pmi('monty', 'python'))
+        print('flying', 'circus', self.client.pmi('flying', 'circus'))
+
+    def ngrams(self):
+        """Print all ngrams that contain the word "test" """
+        pprint(self.client.ngrams(2, contains='test'))
 
 
 if __name__ == '__main__':
+    logging.basicConfig(level=logging.INFO)
+    logging.getLogger('odapi_client').setLevel(logging.DEBUG)
+    start = datetime.datetime.now()
     try:
         examples = Examples()
         # examples.simple()
         # examples.simple_with_lexical_categories()
         # examples.word_scores()
         # examples.more_frequent()
-        examples.multiquery()
+        # examples.multiquery()
         # examples.pmi()
-        pprint(examples.client.frequencies('one', 'and two', 'and three and', 'this is a test', 'and another test'))
+        examples.ngrams()
+        print('Total # queries:', examples.client.num_queries)
     except RequestError as e:
-        print(e.response.status_code, e.response.text)
+        logging.exception('{}: {}'.format(e.response.status_code, e.response.text))
+    end = datetime.datetime.now()
+    print('Execution took {}s'.format((end-start).seconds))

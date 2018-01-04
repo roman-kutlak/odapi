@@ -2,13 +2,16 @@
 A client wrapper for the Oxford Dictionaries API.
 
 """
-
-import requests
 import collections
+import logging
+import requests
+import time
 
 from math import log2
 
 __all__ = ['Client', 'OupClientError', 'ConfigError', 'RequestError', 'ArgumentError']
+
+log = logging.getLogger('odapi_client')
 
 
 class OupClientError(Exception):
@@ -34,9 +37,16 @@ class Client(object):
     """The client wraps requests calls and provides sensible defaults to simplify querying the OD API"""
 
     _corpus_size = None
+    endpoint = 'https://od-api.oxforddictionaries.com:443/api/v1'
+    last_query = 0.0
 
-    def __init__(self, endpoint='https://od-api.oxforddictionaries.com/api/v1', app_id=None, app_key=None, headers=None):
-        self.endpoint = endpoint
+    def __init__(self, app_id=None, app_key=None, endpoint=None, headers=None, rpm=1):
+        if endpoint:
+            self.endpoint = endpoint
+        self.num_queries = 0
+        if rpm <= 0:
+            raise ConfigError('The number of requests per minute (`rpm`) has to be more than 0')
+        self.rate = (1.0/float(rpm))
         self.headers = headers or {}
         if app_id:
             self.headers.setdefault('app_id', app_id)
@@ -83,7 +93,7 @@ class Client(object):
         data = self.request('/stats/frequency/word/en/', params=params)
         return data['result']
 
-    def words_stats(self, tc='', lemma='', wordform='', lexical_category='', **kwargs):
+    def word_stats_list(self, tc='', lemma='', wordform='', lexical_category='', **kwargs):
         """Retrieve a list of words and their frequencies based on the provided params."""
         params = kwargs
         if not (tc or lemma or wordform or lexical_category):
@@ -97,7 +107,6 @@ class Client(object):
         if lexical_category:
             params['lexicalCategory'] = lexical_category
         data = self.request('/stats/frequency/words/en/', params=params)
-        # TODO: add loop for limit + offset
         return data['results']
 
     def ngrams(self, n, *, tokens=None, contains=None, **kwargs):
@@ -112,7 +121,6 @@ class Client(object):
         if contains:
             params['contains'] = contains
         data = self.request('/stats/frequency/ngrams/en/nmc/{}/'.format(n), params=params)
-        # TODO: add loop for limit + offset
         return data['results']
 
     def ngram_frequency(self, n, tokens=None, **kwargs):
@@ -120,9 +128,16 @@ class Client(object):
         results = self.ngrams(n, tokens=tokens, **kwargs)
         return results[0]['frequency'] if results else 0
 
-    def request(self, path, params):
-        r = requests.get(self.endpoint + path, params=params, headers=self.headers)
-        # TODO: raise more specific errors
+    def request(self, path, params, **kwargs):
+        self.num_queries += 1
+        log.debug('Requesting "{}" {}, {}'.format(path, repr(params), repr(kwargs)))
+        elapsed = (time.time() - self.last_query)
+        wait_time = self.rate - elapsed
+        if wait_time > 0.0:
+            log.debug('Waiting due to rate limit ({})'.format(wait_time))
+            time.sleep(wait_time)
+        self.last_query = time.time()
+        r = requests.get(self.endpoint + path, params=params, headers=self.headers, **kwargs)
         if r.status_code != 200:
             raise RequestError('OD API Error', r)
         rv = r.json()
