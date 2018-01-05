@@ -3,7 +3,7 @@ from pprint import pprint
 
 from odapi_client import *
 
-# TODO: replace with your own
+# TODO: replace with your own credentials
 app_id, app_key = os.environ['app_id'], os.environ['app_key']
 url = 'https://od-api.oxforddictionaries.com/api/v1/stats/frequency/ngrams/en/nmc/2/'
 

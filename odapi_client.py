@@ -1,6 +1,11 @@
 """
 A client wrapper for the Oxford Dictionaries API.
 
+The client simplifies some tasks such as getting
+the frequencies of compound words, allows limiting
+the rate at which queries are made and allows
+queries with multiple words in one call.
+
 """
 import collections
 import logging

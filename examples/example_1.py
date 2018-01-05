@@ -1,8 +1,13 @@
+"""
+Example of obtaining statistical information about the lemma "test"
+
+"""
+
 import os
 import requests
 from pprint import pprint
 
-# TODO: replace with your own
+# TODO: replace with your own credentials
 app_id, app_key = os.environ['app_id'], os.environ['app_key']
 url = 'https://od-api.oxforddictionaries.com/api/v1/stats/frequency/word/en/'
 
