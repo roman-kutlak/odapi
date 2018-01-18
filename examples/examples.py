@@ -15,7 +15,6 @@ from odapi_client import *
 
 class Examples:
 
-    # client = Client(app_id=os.environ['app_id'], app_key=os.environ['app_key'], endpoint='http://localhost:38000/api/v1')
     client = Client(app_id=os.environ['app_id'], app_key=os.environ['app_key'])
 
     def __init__(self, app_id=None, app_key=None, headers=None):
